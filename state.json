@@ -1,0 +1,48 @@
+{
+ "tiles": {
+  "0": {
+   "unit": "Dietrich Alluring Killer"
+  },
+  "1": {
+   "unit": "Edelgard Beyond Bounds"
+  },
+  "2": {
+   "unit": "Tsubasa Summoned Girl"
+  },
+  "22": {
+   "skills": {
+    "assist": "Reposition",
+    "weapon": "Regal Sunshade",
+    "special": "Galeforce",
+    "A": "Atk/Def Ideal 4",
+    "B": "Raging Storm",
+    "C": "Assault Troop 3",
+    "S": "Heavy Blade 3"
+   }
+  },
+  "29": {
+   "unit": "Palla Eldest Whitewing"
+  },
+  "41": {
+   "unit": "Palla Eldest Whitewing"
+  },
+  "166": {
+   "unit": "Nina Eye Spy"
+  },
+  "171": {
+   "unit": "Lyn Brave Lady"
+  },
+  "219": {
+   "unit": "Aversa Dark One"
+  },
+  "254": {
+   "unit": "Robin Mystery Tactician"
+  },
+  "279": {
+   "unit": "Lucius The Light"
+  },
+  "289": {
+   "unit": "Lucius The Light"
+  }
+ }
+}

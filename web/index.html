@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FEH Barracks</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header>
+    <h1>FEH Barracks</h1>
+    <nav>
+      <button data-view="ranking" class="active">Ranking</button>
+      <button data-view="review">To review <span id="count-review"></span></button>
+      <button data-view="delete">Deletable <span id="count-delete"></span></button>
+    </nav>
+    <div class="filters">
+      <input id="search" type="search" placeholder="Filter by name…">
+      <label><input id="hide-dupes" type="checkbox"> Hide duplicates</label>
+    </div>
+    <div id="save-status"></div>
+  </header>
+  <main id="view"></main>
+  <aside id="drawer" hidden></aside>
+  <datalist id="skill-names"></datalist>
+  <datalist id="unit-names"></datalist>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Generated / downloaded data: Game8 forbids republishing, wiki assets are cached locally
+cache/
+build/
+web/data.js
+state.json.tmp
+# Personal barracks screenshots
+screenshots/
+.venv/
+__pycache__/
