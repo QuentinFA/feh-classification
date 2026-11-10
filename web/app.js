@@ -3,13 +3,15 @@
 const D = window.FEH_DATA;
 const TIERS = [9.9, 9.5, 9.0, 8.5, 8.0, 7.5, 7.0];
 const KEEP_RATING = 9.0;
+const ADDED_IDX = 100000;  // units added by hand get idx >= this (screenshot tiles count from 0)
 // a match is trusted when its distance is low and clearly better than the runner-up
 const CONF_DIST = 20, CONF_MARGIN = 4;
 const SLOTS = [["weapon", "Weapon"], ["assist", "Assist"], ["special", "Special"], ["A", "A"], ["B", "B"],
   ["C", "C"], ["S", "Seal"], ["X", "Attuned"], ["emblem", "Emblem"]];
 const COLORS = ["Red", "Blue", "Green", "Colorless"];
+const ELEMENTS = ["Fire", "Water", "Wind", "Earth", "Light", "Dark", "Astra", "Anima"];
 
-let S = { tiles: {} };
+let S = { tiles: {}, added: [] };
 let view = "ranking";
 let openIdx = null;
 
@@ -21,12 +23,13 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const norm = (s) => String(s ?? "").replace(/ð/g, "d").replace(/þ/g, "th").replace(/Τ/g, "T")
   .normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/\s*[:：]\s*/g, ": ")
   .replace(/\s*\([^)]*\)$/, "").toLowerCase().trim();
-const tileImg = (t) => `../build/tiles/${t.img}`;
+const tileImg = (t) => (t.added ? faceImg(t.unit) : `../build/tiles/${t.img}`);
 const faceImg = (w) => (D.units[w]?.face ? `../${D.units[w].face}` : "");
 const unitLabel = (w) => { const u = D.units[w]; return u ? (u.shortname || `${u.name}: ${u.title}`) : (w ?? ""); };
 const skillName = (w) => D.skills[w]?.name ?? w;
 const stars = (r) => `<span class="r${r}">${"★".repeat(r)}</span>`;
 const colorOf = (u) => (u?.weapon || "").split(" ")[0];
+const boostText = (b) => Object.entries(b?.boost || {}).map(([s, v]) => `${s}+${v}`).join(" ");
 const ov = (idx) => (S.tiles[idx] ??= {});
 
 // ---------- state persistence ----------
@@ -53,11 +56,51 @@ async function loadState() {
     S = JSON.parse(localStorage.getItem("feh-state") || "{}");
   }
   S.tiles ??= {};
+  S.added ??= [];
+}
+
+// units added by hand look like screenshot tiles, with the wiki face as picture
+const addedTiles = () => S.added.map((a) => ({
+  idx: a.idx, unit: a.unit, added: true, rarity: a.rarity, level_digits: 1, candidates: [], source: "added by hand",
+}));
+
+function addUnit(wikiName) {
+  if (!D.units[wikiName]) { alert(`Unknown unit: ${wikiName}`); return; }
+  const idx = Math.max(ADDED_IDX - 1, ...S.added.map((a) => a.idx)) + 1;
+  S.added.push({ idx, unit: wikiName, rarity: 5 });
+  ov(idx).unit = wikiName;
+  openIdx = idx;
+  save(); render();
+}
+
+function removeAdded(idx) {
+  S.added = S.added.filter((a) => a.idx !== idx);
+  delete S.tiles[idx];
+  openIdx = null;
+  save(); render();
+}
+
+// data.js only has Game8 builds for units owned at build time: fetch the others from the server
+const buildsTried = new Set();
+async function loadBuilds(wikiName) {
+  const u = D.units[wikiName];
+  if (!u?.game8_url || u.builds || buildsTried.has(wikiName)) return;
+  buildsTried.add(wikiName);
+  try {
+    const r = await fetch(`/api/builds?url=${encodeURIComponent(u.game8_url)}`);
+    if (!r.ok) throw new Error(r.status);
+    const page = await r.json();
+    u.builds = page.builds;
+    u.summon_rarity ??= page.rarity;
+    render();
+  } catch {
+    // static file mode, or Game8 down: the next "python -m feh build" picks the unit up
+  }
 }
 
 // ---------- model ----------
 function computeInstances() {
-  const list = D.tiles.map((t) => {
+  const list = [...D.tiles, ...addedTiles()].map((t) => {
     const o = S.tiles[t.idx] || {};
     const [best, second] = t.candidates;
     const confident = best && best.dist <= CONF_DIST && (!second || second.dist - best.dist >= CONF_MARGIN);
@@ -131,14 +174,14 @@ function hasSkill(i, displayName) {
 }
 
 // ---------- views ----------
-function card(i) {
+function card(i, extra = "") {
   const name = i.unit ? unitLabel(i.unit) : "Unknown";
   const cls = ["card", i.deletable ? "deletable" : "", i.uncertain ? "uncertain" : ""].join(" ");
   const badge = $("#hide-dupes").checked && i.copies > 1 ? `<span class="badge">×${i.copies}</span>` : "";
   return `<div class="${cls}" data-idx="${i.idx}" title="${esc(i.unit || "unidentified")}">
     ${badge}<img src="${tileImg(i.tile)}" loading="lazy">
     <div class="name">${esc(name)}</div>
-    <div class="meta">${stars(i.rarity)}<span>${i.invested ? "Lv.10+" : "Lv.1"}</span></div></div>`;
+    <div class="meta">${stars(i.rarity)}<span>${i.invested ? "Lv.10+" : "Lv.1"}</span></div>${extra}</div>`;
 }
 
 function filtered(list) {
@@ -164,6 +207,33 @@ function renderRanking(list) {
     html += `<section class="tier"><h2>${head} · ${items.length}</h2><div class="grid">${items.map(card).join("")}</div></section>`;
   }
   return html || `<p class="muted">Nothing to show.</p>`;
+}
+
+// Legendary/Mythic heroes, grouped by the blessing they grant, best Game8 rating first
+function renderGods(list) {
+  const groups = new Map(ELEMENTS.map((e) => [e, []]));
+  for (const i of filtered(list)) {
+    const el = i.u?.blessing?.element;
+    if (!el) continue;
+    if (!groups.has(el)) groups.set(el, []);
+    groups.get(el).push(i);
+  }
+  const total = (i) => Object.values(i.u.blessing.boost).reduce((a, b) => a + b, 0);
+  if (![...groups.values()].some((g) => g.length)) return `<p class="muted">No Legendary or Mythic heroes found in your barracks.</p>`;
+  let html = `<p class="muted">Legendary and Mythic heroes don't need a blessing. Allies carrying their blessing get the stats shown,
+    during that blessing's season.</p>`;
+  for (const [el, items] of groups) {
+    if (!items.length) continue;
+    items.sort((a, b) => ((b.u.rating ?? 0) - (a.u.rating ?? 0)) || (total(b) - total(a)) || unitLabel(a.unit).localeCompare(unitLabel(b.unit)));
+    const kind = items[0].u.blessing.kind === "mythic" ? "Mythic" : "Legendary";
+    html += `<section class="tier"><h2><b>${esc(el)}</b>${kind} · ${items.length}</h2><div class="grid">${items.map((i) => {
+      const b = i.u.blessing;
+      const notes = [b.duel ? `Duel ${b.duel}` : "", ...(b.effects || [])].filter(Boolean).join(" · ");
+      const rating = i.u.rating != null ? `<b class="${i.u.rating >= KEEP_RATING ? "" : "muted"}">${i.u.rating.toFixed(1)}</b> ` : "";
+      return card(i, `<div class="boost" title="${esc(notes)}">${rating}${esc(boostText(b) || "no stat boost")}</div>`);
+    }).join("")}</div></section>`;
+  }
+  return html;
 }
 
 function candChips(i) {
@@ -231,6 +301,8 @@ function renderDrawer(list) {
     <img src="${tileImg(i.tile)}">${i.unit ? `<img src="${faceImg(i.unit)}">` : ""}
     <div><h2>${esc(u ? `${u.name}: ${u.title}` : "Unidentified")}</h2>
     <div class="muted">${esc(u?.shortname || "")} · ${esc(u?.weapon || "")} · ${esc(u?.move || "")}</div>
+    ${u?.blessing ? `<div>${u.blessing.kind === "mythic" ? "Mythic" : "Legendary"} · <b>${esc(u.blessing.element)}</b>
+      blessing: allies get ${esc(boostText(u.blessing) || "no stat boost")}${(u.blessing.effects || []).length ? ` · ${esc(u.blessing.effects.join(", "))}` : ""}</div>` : ""}
     <div>${u?.rating != null ? `Game8 <b>${u.rating.toFixed(1)}</b>/10` : "Not rated"}
       ${u?.game8_url ? ` · <a href="${esc(u.game8_url)}" target="_blank">Game8 page</a>` : ""}</div>
     <div>${i.deletable ? `<span class="bad">Deletable: ${esc(i.deleteReason)}</span>` : `<span class="ok">Keep</span>`}
@@ -243,9 +315,12 @@ function renderDrawer(list) {
         <option value="keep" ${i.keep === true ? "selected" : ""}>Keep</option>
         <option value="delete" ${i.keep === false ? "selected" : ""}>Delete</option></select></div>
 
-    <h3>Identification ${i.confirmed ? '<span class="ok">confirmed</span>' : '<span class="warn">auto-detected</span>'}</h3>
+    ${i.tile.added
+    ? `<h3>Added by hand</h3><div class="form-row"><input type="text" list="unit-names" placeholder="Other unit…" data-other="${i.idx}">
+      <button class="btn" data-remove="${i.idx}" title="Remove from the barracks list">Remove</button></div>`
+    : `<h3>Identification ${i.confirmed ? '<span class="ok">confirmed</span>' : '<span class="warn">auto-detected</span>'}</h3>
     <div class="cands">${candChips(i)}</div>
-    <div class="form-row"><input type="text" list="unit-names" placeholder="Other unit…" data-other="${i.idx}"></div>`;
+    <div class="form-row"><input type="text" list="unit-names" placeholder="Other unit…" data-other="${i.idx}"></div>`}`;
 
   if (u) {
     for (const b of u.builds || []) {
@@ -266,7 +341,9 @@ function renderDrawer(list) {
       }
       html += "</table>";
     }
-    if (!u.builds?.length) html += `<h3>Builds</h3><p class="muted">${u.game8_url ? "No Game8 build (re-run the build after confirming units)" : "Not on Game8"}</p>`;
+    if (!u.builds && u.game8_url) loadBuilds(i.unit);
+    if (!u.builds?.length) html += `<h3>Builds</h3><p class="muted">${!u.game8_url ? "Not on Game8"
+      : u.builds ? "No build on Game8" : "Loading Game8 builds… (needs python -m feh serve)"}</p>`;
 
     html += `<h3>Current skills (tracked)</h3><p class="muted">Leave empty to assume the default kit.</p>`;
     for (const [slot, label] of SLOTS.filter(([s]) => s !== "emblem")) {
@@ -287,9 +364,11 @@ function renderDrawer(list) {
 function render() {
   const list = computeInstances();
   $("#count-review").textContent = `(${list.filter((i) => i.uncertain).length})`;
+  $("#count-gods").textContent = `(${list.filter((i) => i.u?.blessing && !i.dup).length})`;
   $("#count-delete").textContent = `(${list.filter((i) => i.deletable).length})`;
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
-  $("#view").innerHTML = view === "ranking" ? renderRanking(list) : view === "review" ? renderReview(list) : renderDelete(list);
+  $("#view").innerHTML = view === "ranking" ? renderRanking(list) : view === "review" ? renderReview(list)
+    : view === "gods" ? renderGods(list) : renderDelete(list);
   renderDrawer(list);
 }
 
@@ -300,10 +379,11 @@ function setUnit(idx, wikiName) {
 }
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-pick],[data-idx],[data-close],nav button");
+  const t = e.target.closest("[data-pick],[data-idx],[data-close],[data-remove],nav button");
   if (!t) return;
   if (t.tagName === "A") e.preventDefault();
   if (t.dataset.pick) setUnit(+t.dataset.for, t.dataset.pick);
+  else if (t.dataset.remove) removeAdded(+t.dataset.remove);
   else if (t.dataset.idx) { openIdx = +t.dataset.idx; render(); }
   else if (t.hasAttribute("data-close")) { openIdx = null; render(); }
   else if (t.dataset.view) { view = t.dataset.view; render(); }
@@ -312,6 +392,7 @@ document.addEventListener("click", (e) => {
 document.addEventListener("change", (e) => {
   const t = e.target;
   if (t.dataset.other) { if (t.value) setUnit(+t.dataset.other, t.value); return; }
+  if (t.id === "add-unit") { if (t.value) addUnit(t.value); t.value = ""; return; }
   if (t.id === "review-all") { S.reviewAll = t.checked; save(); render(); return; }
   if (t.id === "hide-dupes") { render(); return; }
   if (openIdx == null) return;
@@ -333,4 +414,5 @@ $("#search").addEventListener("input", render);
   $("#skill-names").innerHTML = names.map((n) => `<option value="${esc(n)}">`).join("");
   $("#unit-names").innerHTML = Object.entries(D.units).map(([w, u]) => `<option value="${esc(w)}">${esc(u.shortname || "")}</option>`).join("");
   render();
+  for (const a of S.added) loadBuilds(a.unit);
 })();

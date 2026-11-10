@@ -53,6 +53,25 @@ def skills():
     }, order_by="WikiName")
 
 
+STATS = ("HP", "Atk", "Spd", "Def", "Res")
+
+
+def gods():
+    """Legendary and Mythic heroes, by page name: the blessing they grant and the stats it adds
+    to allies carrying that blessing (Emblem heroes grant none)."""
+    boosts = {s.lower(): f"AllyBoost{s}" for s in STATS}
+    boost = lambda r: {s: int(r[s.lower()]) for s in STATS if r[s.lower()] not in ("", "0")}
+    out = {}
+    for r in cargo("LegendaryHero", {"page": "_pageName", "element": "LegendaryEffect", "duel": "Duel", **boosts}):
+        out[r["page"]] = {"kind": "legendary", "element": r["element"], "boost": boost(r),
+                          "duel": int(r["duel"]) if r["duel"] else None}
+    for r in cargo("MythicHero", {"page": "_pageName", "element": "MythicEffect",
+                                  "e2": "MythicEffect2", "e3": "MythicEffect3", **boosts}):
+        out[r["page"]] = {"kind": "mythic", "element": r["element"], "boost": boost(r),
+                          "effects": [e for e in (r["e2"], r["e3"]) if e and e != "None"]}
+    return out
+
+
 def face_urls(wiki_names):
     """wiki_name -> URL of its barracks face icon ('<WikiName> Face FC.webp')."""
     urls = {}

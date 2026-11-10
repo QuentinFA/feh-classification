@@ -29,6 +29,9 @@ main { padding: 16px; }
 .card .meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
 .card .badge { position: absolute; top: 2px; right: 2px; font-size: 10px; padding: 1px 5px; border-radius: 8px;
   background: #000a; }
+.card .boost b { color: var(--text); }
+.card .boost b.muted { color: var(--muted); }
+.card .boost { font-size: 11px; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card.deletable { opacity: .55; }
 .card.uncertain { border-color: var(--warn); border-style: dashed; }
 .r5 { color: var(--gold); } .r4 { color: var(--silver); } .r3 { color: var(--copper); }

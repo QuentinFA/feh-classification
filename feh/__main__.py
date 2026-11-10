@@ -56,8 +56,9 @@ def build(args):
     units = [u for u in wiki.units() if not EXCLUDED & set((u["properties"] or "").split(","))]
     unit_skills = wiki.unit_skills()
     skills = wiki.skills()
+    gods = wiki.gods()
     faces = wiki.download_faces(wiki.face_urls(u["wiki_name"] for u in units), os.path.join(BUILD, "faces"))
-    log(f"    {len(units)} units, {len(faces)} faces, {len(skills)} skills")
+    log(f"    {len(units)} units, {len(faces)} faces, {len(skills)} skills, {len(gods)} gods")
 
     log("3/6 matching tiles to faces")
     index = match.build_index(faces)
@@ -85,6 +86,7 @@ def build(args):
     state = load_state()
     overrides = state.get("tiles", {})
     owned = {overrides.get(str(t["idx"]), {}).get("unit") or t["candidates"][0]["unit"] for t in tiles}
+    owned |= {a["unit"] for a in state.get("added", [])}  # added in the UI, no screenshot
     owned.discard(None)
     by_wiki = {u["wiki_name"]: u for u in units}
     todo = [by_wiki[w] for w in sorted(owned) if w in by_wiki and by_wiki[w].get("game8_url")]
@@ -115,6 +117,7 @@ def build(args):
             "shortname": u.get("shortname"), "rating": u.get("rating"), "game8_url": u.get("game8_url"),
             "summon_rarity": u.get("summon_rarity"), "builds": u.get("builds"),
             "skills": skills_by_unit.get(u["wiki_name"], []),
+            "blessing": gods.get(u["page"]),
             "face": os.path.relpath(faces[u["wiki_name"]], ROOT) if u["wiki_name"] in faces else None,
         } for u in units},
         "skills": {s["wiki_name"]: {

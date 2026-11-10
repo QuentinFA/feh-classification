@@ -11,12 +11,14 @@
     <h1>FEH Barracks</h1>
     <nav>
       <button data-view="ranking" class="active">Ranking</button>
+      <button data-view="gods">Gods <span id="count-gods"></span></button>
       <button data-view="review">To review <span id="count-review"></span></button>
       <button data-view="delete">Deletable <span id="count-delete"></span></button>
     </nav>
     <div class="filters">
       <input id="search" type="search" placeholder="Filter by name…">
       <label><input id="hide-dupes" type="checkbox"> Hide duplicates</label>
+      <input id="add-unit" type="text" list="unit-names" placeholder="+ Add a new unit…" title="Newly summoned unit: no need to screenshot the barracks again">
     </div>
     <div id="save-status"></div>
   </header>

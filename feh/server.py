@@ -1,8 +1,12 @@
-"""Local UI server: static files from web/ and build/, plus GET/PUT /api/state (state.json)."""
+"""Local UI server: static files from web/ and build/, GET/PUT /api/state (state.json), and
+GET /api/builds?url=<Game8 hero page> for units added after the last build."""
 import json
 import os
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
+
+from . import game8
 
 SERVED = ("/web/", "/build/")
 
@@ -23,6 +27,15 @@ class Handler(SimpleHTTPRequestHandler):
                 with open(self.state_path, "rb") as f:
                     body = f.read()
             self._send(200, body)
+        elif self.path.startswith("/api/builds?"):
+            url = parse_qs(urlparse(self.path).query).get("url", [""])[0]
+            if urlparse(url).netloc != "game8.co":
+                return self._send(400, b'{"error":"not a game8.co url"}')
+            try:
+                page = game8.unit_page(url)
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)}).encode())
+            self._send(200, json.dumps({"builds": page["builds"], "rarity": page["rarity"]}).encode())
         elif self.path.startswith(SERVED):
             super().do_GET()
         else:
