@@ -1,13 +1,39 @@
 {
  "tiles": {
   "0": {
-   "unit": "Dietrich Alluring Killer"
+   "unit": "Edelgard Beyond Bounds",
+   "skills": {
+    "weapon": "Deep Hauteclere",
+    "assist": "Reposition",
+    "special": "Ignis",
+    "A": "Rise Above 3",
+    "B": "Black Eagle Reign",
+    "C": "A/D Near Save 2",
+    "S": "Hardy Bearing 3"
+   }
   },
   "1": {
-   "unit": "Edelgard Beyond Bounds"
+   "unit": "Dietrich Alluring Killer",
+   "skills": {
+    "weapon": "Answerer",
+    "assist": "Reposition",
+    "special": "Ignis",
+    "A": "Swift Specter",
+    "B": "Momentum 3",
+    "C": "Moving Shadow",
+    "S": "Atk/Spd Clash 3"
+   }
   },
   "2": {
-   "unit": "Tsubasa Summoned Girl"
+   "unit": "Tsubasa Summoned Girl",
+   "skills": {
+    "weapon": "Mirage Excalibur",
+    "assist": "Reposition",
+    "special": "Dragon Fang",
+    "A": "Blade Session 3",
+    "B": "Demonic Shackle",
+    "C": "I'll Soar Higher!"
+   }
   },
   "22": {
    "skills": {
@@ -26,11 +52,41 @@
   "41": {
    "unit": "Palla Eldest Whitewing"
   },
+  "43": {
+   "skills": {
+    "weapon": "Randgríðr",
+    "assist": "To Change Fate! II",
+    "A": "Close Counter",
+    "B": "Lull Atk/Def 3",
+    "C": "Rouse Atk/Def 3"
+   }
+  },
+  "84": {
+   "unit": "Lyn Brave Lady"
+  },
+  "87": {
+   "unit": "Palla Eldest Whitewing"
+  },
+  "91": {
+   "unit": "Aversa Dark One"
+  },
+  "121": {
+   "unit": "Robin Mystery Tactician"
+  },
+  "122": {
+   "unit": "Nina Eye Spy"
+  },
+  "146": {
+   "unit": "Lucius The Light"
+  },
   "166": {
    "unit": "Nina Eye Spy"
   },
   "171": {
    "unit": "Lyn Brave Lady"
+  },
+  "212": {
+   "unit": "Lucius The Light"
   },
   "219": {
    "unit": "Aversa Dark One"
@@ -43,6 +99,22 @@
   },
   "289": {
    "unit": "Lucius The Light"
+  },
+  "294": {
+   "unit": "Palla Eldest Whitewing"
+  },
+  "324": {
+   "unit": "Palla Eldest Whitewing"
+  },
+  "100000": {
+   "unit": "Tharja Obsessive Bride"
   }
- }
+ },
+ "added": [
+  {
+   "idx": 100000,
+   "unit": "Tharja Obsessive Bride",
+   "rarity": 5
+  }
+ ]
 }
